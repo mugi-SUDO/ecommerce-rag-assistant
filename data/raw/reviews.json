@@ -1,0 +1,12 @@
+[
+  {"reviewId": "R001", "productId": "P001", "userId": "U001", "rating": 5, "content": "续航很强，徕卡拍照很清晰，手感不错。"},
+  {"reviewId": "R002", "productId": "P001", "userId": "U002", "rating": 4, "content": "性价比高，就是稍微有点重。"},
+  {"reviewId": "R003", "productId": "P002", "userId": "U002", "rating": 5, "content": "卫星通话很实用，信号稳定。"},
+  {"reviewId": "R004", "productId": "P003", "userId": "U003", "rating": 3, "content": "价格偏高，信号一般。"},
+  {"reviewId": "R005", "productId": "P006", "userId": "U001", "rating": 5, "content": "降噪效果一流，音质很好。"},
+  {"reviewId": "R006", "productId": "P008", "userId": "U003", "rating": 4, "content": "煮饭很香，预约功能好用。"},
+  {"reviewId": "R007", "productId": "P010", "userId": "U003", "rating": 5, "content": "空间很大，运行很安静。"},
+  {"reviewId": "R008", "productId": "P011", "userId": "U002", "rating": 4, "content": "轻薄保暖，冬天穿正合适。"},
+  {"reviewId": "R009", "productId": "P012", "userId": "U001", "rating": 5, "content": "穿着舒服，缓震好。"},
+  {"reviewId": "R010", "productId": "P013", "userId": "U002", "rating": 5, "content": "皮肤状态改善明显，回购了。"}
+]

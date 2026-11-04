@@ -1,0 +1,16 @@
+[
+  {"productId": "P001", "name": "小米14", "brand": "小米", "category": "手机数码", "price": 3999, "rating": 4.7, "sales": 15000, "stock": 320, "attrs": {"屏幕": "6.36英寸", "处理器": "骁龙8Gen3", "电池": "4610mAh", "摄像头": "5000万徕卡"}},
+  {"productId": "P002", "name": "华为Mate60 Pro", "brand": "华为", "category": "手机数码", "price": 6999, "rating": 4.8, "sales": 9000, "stock": 80, "attrs": {"屏幕": "6.82英寸", "处理器": "麒麟9000s", "卫星通话": "支持"}},
+  {"productId": "P003", "name": "iPhone 15", "brand": "苹果", "category": "手机数码", "price": 5999, "rating": 4.6, "sales": 20000, "stock": 150, "attrs": {"芯片": "A16", "摄像头": "4800万", "屏幕": "6.1英寸"}},
+  {"productId": "P004", "name": "OPPO Find X7", "brand": "OPPO", "category": "手机数码", "price": 4299, "rating": 4.5, "sales": 6000, "stock": 200, "attrs": {"处理器": "天玑9300", "摄像头": "哈苏影像"}},
+  {"productId": "P005", "name": "荣耀90", "brand": "荣耀", "category": "手机数码", "price": 2499, "rating": 4.4, "sales": 11000, "stock": 500, "attrs": {"屏幕": "6.7英寸", "摄像头": "2亿像素"}},
+  {"productId": "P006", "name": "华为FreeBuds Pro3", "brand": "华为", "category": "手机数码", "price": 1499, "rating": 4.6, "sales": 8000, "stock": 600, "attrs": {"类型": "降噪耳机", "续航": "31小时"}},
+  {"productId": "P007", "name": "小米充电宝20000mAh", "brand": "小米", "category": "手机数码", "price": 149, "rating": 4.8, "sales": 50000, "stock": 2000, "attrs": {"容量": "20000mAh", "快充": "22.5W"}},
+  {"productId": "P008", "name": "美的电饭煲", "brand": "美的", "category": "家用电器", "price": 399, "rating": 4.5, "sales": 30000, "stock": 800, "attrs": {"容量": "4L", "功能": "智能预约"}},
+  {"productId": "P009", "name": "格力空调1.5匹", "brand": "格力", "category": "家用电器", "price": 2999, "rating": 4.6, "sales": 12000, "stock": 300, "attrs": {"匹数": "1.5匹", "能效": "一级"}},
+  {"productId": "P010", "name": "海尔双开门冰箱", "brand": "海尔", "category": "家用电器", "price": 4599, "rating": 4.7, "sales": 5000, "stock": 100, "attrs": {"容量": "485L", "门体": "双开门"}},
+  {"productId": "P011", "name": "优衣库轻薄羽绒服", "brand": "优衣库", "category": "服饰鞋包", "price": 599, "rating": 4.5, "sales": 25000, "stock": 1500, "attrs": {"材质": "90%白鸭绒", "款式": "连帽"}},
+  {"productId": "P012", "name": "耐克Air运动鞋", "brand": "耐克", "category": "服饰鞋包", "price": 899, "rating": 4.6, "sales": 18000, "stock": 900, "attrs": {"材质": "网面", "缓震": "Air气垫"}},
+  {"productId": "P013", "name": "兰蔻小黑瓶精华", "brand": "兰蔻", "category": "美妆个护", "price": 760, "rating": 4.7, "sales": 22000, "stock": 400, "attrs": {"规格": "50ml", "功效": "修护抗老"}},
+  {"productId": "P014", "name": "小米手环8", "brand": "小米", "category": "手机数码", "price": 249, "rating": 4.4, "sales": 40000, "stock": 3000, "attrs": {"屏幕": "1.62英寸", "续航": "16天"}}
+]

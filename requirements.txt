@@ -1,0 +1,25 @@
+# 电商智能助手依赖
+# 安装: pip install -r requirements.txt
+
+# 编排 / LLM
+langchain>=0.3.0
+langchain-openai>=0.2.0        # ChatOpenAI 指向 DeepSeek
+langchain-community>=0.3.0
+langchain-huggingface>=0.3.0   # 本地 BGE 嵌入
+langchain-text-splitters>=0.3.0
+langgraph>=0.2,<0.3            # 状态机编排（必须 <0.3，1.x 会强拉 langchain-core>=1 与 langchain 0.3 冲突）
+
+# 向量库
+chromadb>=0.5.0
+
+# 图数据库
+neo4j>=5.0.0
+
+# 嵌入 / 检索
+sentence-transformers>=3.0.0
+rank-bm25>=0.2.2               # BM25（混合检索）
+jieba>=0.42.1                  # 中文分词
+
+# 工具
+python-dotenv>=1.0.0
+pydantic>=2.0.0

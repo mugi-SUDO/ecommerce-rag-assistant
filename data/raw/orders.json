@@ -1,0 +1,10 @@
+[
+  {"orderId": "O20241101001", "userId": "U001", "items": [{"productId": "P001", "quantity": 1}, {"productId": "P007", "quantity": 1}], "totalAmount": 4148, "status": "已签收", "orderDate": "2024-11-01", "courier": "顺丰", "trackingNo": "SF1111111111"},
+  {"orderId": "O20241102001", "userId": "U001", "items": [{"productId": "P006", "quantity": 1}], "totalAmount": 1499, "status": "已发货", "orderDate": "2024-11-02", "courier": "京东", "trackingNo": "JD2222222222"},
+  {"orderId": "O20241103001", "userId": "U002", "items": [{"productId": "P002", "quantity": 1}, {"productId": "P006", "quantity": 1}], "totalAmount": 8498, "status": "待付款", "orderDate": "2024-11-03", "courier": "", "trackingNo": ""},
+  {"orderId": "O20241104001", "userId": "U002", "items": [{"productId": "P003", "quantity": 1}], "totalAmount": 5999, "status": "退款中", "orderDate": "2024-11-04", "courier": "顺丰", "trackingNo": "SF3333333333"},
+  {"orderId": "O20241105001", "userId": "U003", "items": [{"productId": "P008", "quantity": 1}, {"productId": "P010", "quantity": 1}], "totalAmount": 4998, "status": "已签收", "orderDate": "2024-11-05", "courier": "京东", "trackingNo": "JD4444444444"},
+  {"orderId": "O20241106001", "userId": "U003", "items": [{"productId": "P011", "quantity": 1}, {"productId": "P012", "quantity": 1}], "totalAmount": 1498, "status": "已发货", "orderDate": "2024-11-06", "courier": "中通", "trackingNo": "ZT5555555555"},
+  {"orderId": "O20241107001", "userId": "U001", "items": [{"productId": "P014", "quantity": 1}], "totalAmount": 249, "status": "已签收", "orderDate": "2024-11-07", "courier": "圆通", "trackingNo": "YT6666666666"},
+  {"orderId": "O20241108001", "userId": "U002", "items": [{"productId": "P013", "quantity": 1}], "totalAmount": 760, "status": "待发货", "orderDate": "2024-11-08", "courier": "", "trackingNo": ""}
+]
