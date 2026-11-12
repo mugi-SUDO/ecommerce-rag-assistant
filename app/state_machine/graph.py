@@ -50,12 +50,38 @@ class GraphState(TypedDict):
     current_query: str  # 当前（可能被反思层改写后的）查询
     intent: str
     routing: dict
-    docs: List[Document]
-    docs_text: str
+    docs: List[Document]  # 本轮检索结果（供反思层评估）
+    all_docs: List[Document]  # 历次重试累计的证据（供最终生成）
+    docs_text: str  # all_docs 拼装后的文本
     reflection: dict
     iteration: int
     final_answer: str
     memory_context: str  # 三层记忆拼装出的提示文本（用户画像 + 最近对话 + 长期记忆）
+
+
+# 空结果 / 报错结果的 metadata.type；只要还有正常证据就不参与最终生成
+_EMPTY_DOC_TYPES = {"order_empty", "kg_empty", "kg_error"}
+
+
+def _merge_docs(old_docs: List[Document], new_docs: List[Document]) -> List[Document]:
+    """合并多轮检索证据：按 (type, 内容) 去重，并丢弃空结果/报错占位。
+
+    反思层改写查询后重试时，新的一轮不一定比上一轮更好；
+    只保留最后一轮会让前面已经检索到的正确证据凭空消失。
+    """
+    merged, seen = [], set()
+    for doc in list(old_docs or []) + list(new_docs or []):
+        meta = doc.metadata or {}
+        key = (meta.get("type"), doc.page_content)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(doc)
+
+    has_real = any((d.metadata or {}).get("type") not in _EMPTY_DOC_TYPES for d in merged)
+    if has_real:
+        merged = [d for d in merged if (d.metadata or {}).get("type") not in _EMPTY_DOC_TYPES]
+    return merged
 
 
 class ECommerceAssistant:
@@ -103,11 +129,15 @@ class ECommerceAssistant:
 
     # 反思
     def _reflect(self, state: GraphState) -> dict:
-        docs_text = format_docs(state.get("docs", []))
+        current_docs = state.get("docs", [])
+        docs_text = format_docs(current_docs)  # 本轮证据：只用于反思评估
         refl = self.reflector.reflect(state["current_query"], docs_text)  # 调用反思器
         iteration = state.get("iteration", 0) + 1
+        # 累计历次证据：改写后重试变差时，不丢失前面检索到的正确信息
+        all_docs = _merge_docs(state.get("all_docs", []), current_docs)
         result = {
-            "docs_text": docs_text,
+            "all_docs": all_docs,
+            "docs_text": format_docs(all_docs),  # 生成阶段看到的是累计证据
             "iteration": iteration,
             "reflection": {
                 "relevance_score": refl.relevance_score,
@@ -224,6 +254,7 @@ class ECommerceAssistant:
                 "query": query,
                 "current_query": current_query,
                 "iteration": 0,
+                "all_docs": [],
                 "memory_context": memory_context,
             }
         )

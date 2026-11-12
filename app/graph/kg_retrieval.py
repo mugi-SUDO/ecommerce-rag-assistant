@@ -27,14 +27,17 @@ class GraphRetriever:
 
     def _extract_entities(self, query: str) -> List[str]:
         entities = []
-        for p in self.ctx.products:
-            if p["name"] and p["name"] in query:
-                entities.append(("product", p["name"]))
+        product_names = [p["name"] for p in self.ctx.products
+                         if p["name"] and p["name"] in query]
+        for name in product_names:
+            entities.append(("product", name))
+        # "小米14" 里天然含有品牌名"小米"，这种被商品名覆盖的实体不再重复计入，
+        # 否则多跳查询会混入一整串同品牌商品。
         for b in self._brands:
-            if b in query:
+            if b in query and not any(b in name for name in product_names):
                 entities.append(("brand", b))
         for c in self._categories:
-            if c in query:
+            if c in query and not any(c in name for name in product_names):
                 entities.append(("category", c))
         # 去重（保持顺序）
         seen, out = set(), []
@@ -89,7 +92,7 @@ class GraphRetriever:
                     )
                     for r in rec:
                         results.append(f"「{r['source']}」的替代品/相似款：{r['name']}（{r['price']}元，评分 {r['rating']}）")
-                elif kind == "product":
+                elif query_type == "subgraph" and kind == "product":
                     rec = session.run(
                         """
                         MATCH (p:Product {name: $name})
@@ -107,7 +110,7 @@ class GraphRetriever:
                             f"商品 {p['name']}：品牌 {r['brand']}，类目 {r['category']}，"
                             f"价格 {p['price']}元，评分 {p['rating']}，库存 {p['stock']}件；属性：{attrs}"
                         )
-                elif kind == "category":
+                elif query_type == "subgraph" and kind == "category":
                     rec = session.run(
                         """
                         MATCH (c:Category {name: $name})<-[:BELONGS_TO]-(p:Product)
@@ -118,7 +121,7 @@ class GraphRetriever:
                     )
                     for r in rec:
                         results.append(f"{name}类目下的商品：{r['name']}（{r['price']}元，评分 {r['rating']}）")
-                elif kind == "brand":
+                elif query_type == "subgraph" and kind == "brand":
                     rec = session.run(
                         """
                         MATCH (b:Brand {name: $name})<-[:MADE_BY]-(p:Product)
@@ -146,4 +149,9 @@ class GraphRetriever:
             ent_names = understood.get("entities", [])
             entities = [("product", n) for n in ent_names if any(p["name"] == n for p in self.ctx.products)]
         docs = self._run(query_type, entities)
+        # 协同购买/替代品查不到时退回子图查询，至少给出实体本身的信息
+        if query_type != "subgraph" and all(
+            (d.metadata or {}).get("type") == "kg_empty" for d in docs
+        ):
+            docs = self._run("subgraph", entities)
         return docs[:k]

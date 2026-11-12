@@ -135,6 +135,17 @@ def test_end_session_rejects_other_user():
     assert len(m.store.get_session_turns("s1")) == 1
 
 
+def test_session_owner_survives_end_session():
+    """会话结束后归属标记仍在：原用户可以续用，其他用户不能冒用。"""
+    m = _manager()
+    m.save_turn("s2", "u1", "q", "a")
+    m.end_session("s2", "u1")
+    # 对话内容已清空，但归属保留
+    assert m.store.get_session_turns("s2") == []
+    assert m.claim_session("s2", "u1") is True
+    assert m.claim_session("s2", "u2") is False
+
+
 def test_clear_user_removes_all_memory():
     m = _manager()
     m.save_turn("s1", "u1", "q1", "a1")

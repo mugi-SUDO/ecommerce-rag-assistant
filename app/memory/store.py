@@ -34,6 +34,15 @@ def session_meta_key(session_id: str) -> str:
     return f"mem:session:{session_id}:meta"
 
 
+def session_owner_key(session_id: str) -> str:
+    """会话归属单独存一份，生命周期长于会话本身。
+
+    结束会话只清空对话内容（turns/meta），归属标记保留一段时间，
+    这样别人拿到一个已结束的 session_id 也无法冒用。
+    """
+    return f"mem:session:{session_id}:owner"
+
+
 def user_history_key(user_id: str) -> str:
     return f"mem:user:{user_id}:history"
 
@@ -123,7 +132,8 @@ class InMemoryStore:
 
     def clear_session(self, session_id: str) -> None:
         self._turns.pop(session_id, None)
-        owner = self._session_owner.pop(session_id, None)
+        # 只清对话内容，保留归属：会话结束后其他用户仍不能冒用该 session_id
+        owner = self._session_owner.get(session_id)
         if owner:
             self._user_sessions.get(owner, set()).discard(session_id)
 
@@ -148,7 +158,9 @@ class InMemoryStore:
     # ---- 删除用户全部记忆 ----
     def clear_user(self, user_id: str) -> int:
         sessions = list(self._user_sessions.get(user_id, set()))
-        for sid in sessions:
+        # 已结束会话不在 sessions 集合里，但归属标记仍指向该用户，一并清理
+        owned = [sid for sid, owner in self._session_owner.items() if owner == user_id]
+        for sid in set(sessions) | set(owned):
             self._turns.pop(sid, None)
             self._session_owner.pop(sid, None)
         self._user_sessions.pop(user_id, None)
@@ -162,7 +174,8 @@ class RedisMemoryStore:
 
     def __init__(self, url: str, session_ttl: int = 1800,
                  short_term_max_turns: int = 10, history_max: int = 200,
-                 history_ttl: int = 90 * 24 * 3600):
+                 history_ttl: int = 90 * 24 * 3600,
+                 owner_ttl: int = 7 * 24 * 3600):
         if redis is None:
             raise RuntimeError("未安装 redis 客户端，请执行 pip install redis")
         self.client = redis.Redis.from_url(url, decode_responses=True)
@@ -171,6 +184,7 @@ class RedisMemoryStore:
         self.short_term_max_turns = short_term_max_turns
         self.history_max = history_max
         self.history_ttl = history_ttl
+        self.owner_ttl = owner_ttl
 
     def ping(self) -> bool:
         return bool(self.client.ping())
@@ -212,14 +226,18 @@ class RedisMemoryStore:
 
     # ---- 会话归属 ----
     def claim_session(self, session_id: str, user_id: str) -> bool:
-        key = session_meta_key(session_id)
-        if self.client.hsetnx(key, "user_id", user_id):
-            self.client.expire(key, self.session_ttl)
+        key = session_owner_key(session_id)
+        if self.client.set(key, user_id, nx=True, ex=self.owner_ttl):
             return True
-        return self.client.hget(key, "user_id") == user_id
+        owner = self.client.get(key)
+        if owner is None:
+            # 兼容改动前创建的会话：当时归属只记录在 meta 里
+            owner = self.client.hget(session_meta_key(session_id), "user_id")
+        return owner == user_id
 
     def get_session_owner(self, session_id: str) -> Optional[str]:
-        return self.client.hget(session_meta_key(session_id), "user_id")
+        return (self.client.get(session_owner_key(session_id))
+                or self.client.hget(session_meta_key(session_id), "user_id"))
 
     def list_sessions(self, user_id: str) -> List[str]:
         return sorted(self.client.smembers(user_sessions_key(user_id)))
@@ -292,7 +310,8 @@ class RedisMemoryStore:
         sessions = list(self.client.smembers(user_sessions_key(user_id)))
         pipe = self.client.pipeline()
         for sid in sessions:
-            pipe.delete(session_turns_key(sid), session_meta_key(sid))
+            pipe.delete(session_turns_key(sid), session_meta_key(sid),
+                        session_owner_key(sid))
         pipe.delete(
             user_history_key(user_id),
             user_profile_key(user_id),
