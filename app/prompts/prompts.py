@@ -63,11 +63,14 @@ def reflector_prompt(query: str, docs_text: str) -> str:
 """
 
 
-def generate_prompt(query: str, docs_text: str, reflection_note: str = "") -> str:
+def generate_prompt(query: str, docs_text: str, reflection_note: str = "",
+                    memory_text: str = "") -> str:
     note = f"\n\n（反思层提示：{reflection_note}）" if reflection_note else ""
+    memory = f"\n\n以下是历史对话与用户画像，供理解指代和个性化回答：\n{memory_text}" if memory_text else ""
     return f"""你是电商服务平台客服助手。请基于以下检索到的信息回答用户问题。
 
 用户问题：{query}
+{memory}
 
 检索到的信息：
 {docs_text}
@@ -77,6 +80,7 @@ def generate_prompt(query: str, docs_text: str, reflection_note: str = "") -> st
 1. 准确、完整，严格基于给定信息
 2. 信息不足时诚实说明，不要编造
 3. 适当标注信息来源
+4. 历史对话只用于理解上下文（如"这个""那款"指什么），事实仍以检索信息为准
 
 回答：
 """
@@ -103,6 +107,49 @@ def graph_query_prompt(query: str, known_entities: str) -> str:
 严格返回 JSON（不要 markdown 代码块）：
 {{"query_type": "subgraph", "entities": ["小米14"]}}
 """
+
+
+def contextualize_prompt(query: str, history_text: str) -> str:
+    return f"""你是对话理解助手。根据最近对话，把用户当前问题改写成一个不依赖上下文、可独立理解的完整问题。
+
+最近对话：
+{history_text}
+
+当前问题：{query}
+
+要求：
+1. 只补全指代和省略（如"这个""那个""它""再便宜点""那款"），不要回答问题，不要新增事实。
+2. 如果当前问题本身已经完整，原样返回。
+3. 只输出改写后的问题，不要解释、不要加引号。
+
+改写后的问题："""
+
+
+def profile_update_prompt(current_profile: str, query: str, answer: str) -> str:
+    return f"""你是用户画像抽取助手。根据"当前画像"和"最新对话"，输出更新后的完整用户画像。
+
+当前画像（JSON）：
+{current_profile}
+
+最新对话：
+用户：{query}
+助手：{answer}
+
+要求：
+1. 只提取用户明确表达或可稳妥推断的信息，不要编造。
+2. 字段固定为：preferences（偏好）、budget（预算）、brands（品牌偏好）、category_interest（类目兴趣）、notes（其他备注）。
+3. 保留当前画像中仍然有效的信息，合并新信息；没有信息的字段写空字符串。
+4. 严格返回 JSON，不要 markdown 代码块：
+{{"preferences": "", "budget": "", "brands": "", "category_interest": "", "notes": ""}}
+"""
+
+
+def session_summary_prompt(turns_text: str) -> str:
+    return f"""把以下对话压缩成一段 150 字以内的会话摘要，保留用户关注点、已确认事实和未解决问题。
+
+{turns_text}
+
+摘要："""
 
 
 def order_query_prompt(query: str) -> str:

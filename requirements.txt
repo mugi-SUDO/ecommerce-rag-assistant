@@ -15,10 +15,18 @@ chromadb>=0.5.0
 # 图数据库
 neo4j>=5.0.0
 
+# 记忆（短期会话 / 长期历史 / 用户画像）
+redis>=5.0.0
+
 # 嵌入 / 检索
 sentence-transformers>=3.0.0
 rank-bm25>=0.2.2               # BM25（混合检索）
 jieba>=0.42.1                  # 中文分词
+
+# HTTP API / 认证
+fastapi>=0.115,<1.0
+uvicorn>=0.30
+PyJWT>=2.8
 
 # 工具
 python-dotenv>=1.0.0

@@ -1,6 +1,7 @@
 """
 混合检索工具：BM25（关键词）+ 向量（语义）+ RRF 融合重排，适合单跳检索型问题。
 """
+
 import hashlib
 from collections import defaultdict
 from typing import List
@@ -20,6 +21,7 @@ _STOPWORDS = set(
 )
 
 
+# 中文分词
 def _tokenize(text: str) -> List[str]:
     return [t for t in jieba.lcut(text) if t.strip() and t not in _STOPWORDS]
 
@@ -39,6 +41,7 @@ class HybridSearchEngine:
             self.bm25 = BM25Okapi([_tokenize(d.page_content) for d in self.chunks])
         self._built = True
 
+    # 关键词检索
     def _bm25_search(self, query, k):
         self._ensure_bm25()
         if self.bm25 is None:
@@ -55,24 +58,38 @@ class HybridSearchEngine:
             if scores[i] <= 0:
                 continue
             d = self.chunks[i]
-            out.append(Document(
-                page_content=d.page_content,
-                metadata={**d.metadata, "search_method": "bm25", "score": float(scores[i])},
-            ))
+            out.append(
+                Document(
+                    page_content=d.page_content,
+                    metadata={
+                        **d.metadata,
+                        "search_method": "bm25",
+                        "score": float(scores[i]),
+                    },
+                )
+            )
         return out
 
+    # 向量检索
     def _vector_search(self, query, k):
         ctx = get_context()
         if ctx is None or ctx.vectorstore is None:
             return []
         out = []
         for d, dist in ctx.vectorstore.similarity_search_with_score(query, k=k):
-            out.append(Document(
-                page_content=d.page_content,
-                metadata={**d.metadata, "search_method": "vector", "score": float(dist)},
-            ))
+            out.append(
+                Document(
+                    page_content=d.page_content,
+                    metadata={
+                        **d.metadata,
+                        "search_method": "vector",
+                        "score": float(dist),
+                    },
+                )
+            )
         return out
 
+    # rrf融合
     def _rrf_merge(self, ranked_lists, k):
         scores = defaultdict(float)
         objs = {}

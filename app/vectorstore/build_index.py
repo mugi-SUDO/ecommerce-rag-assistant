@@ -1,8 +1,16 @@
 """
 向量索引构建：把商品 / 评价 / 售后政策转为文本 → 分块 → 嵌入 → 存入 Chroma
 
-注意：使用 langchain_community.vectorstores.Chroma（langchain_chroma 未安装）。
+注意：使用 langchain_community.vectorstores.Chroma。
 """
+
+# 本项目中有两个chroma向量库
+# 一个是知识库collection：ecommerce_kb
+# 另一个是记忆库collection：memory_vectorstore
+
+# 互不影响， 这里是构建知识库collection的向量索引
+# 记忆库的向量索引在MemoryManager中构建。
+
 from typing import List
 
 from langchain_core.documents import Document
@@ -40,15 +48,27 @@ def _review_to_text(r: dict) -> str:
 def build_documents(products, reviews, policy_text) -> List[Document]:
     docs = []
     for p in products:
-        docs.append(Document(
-            page_content=_product_to_text(p),
-            metadata={"type": "product", "productId": p["productId"], "name": p["name"]},
-        ))
+        docs.append(
+            Document(
+                page_content=_product_to_text(p),
+                metadata={
+                    "type": "product",
+                    "productId": p["productId"],
+                    "name": p["name"],
+                },
+            )
+        )
     for r in reviews:
-        docs.append(Document(
-            page_content=_review_to_text(r),
-            metadata={"type": "review", "reviewId": r["reviewId"], "productId": r["productId"]},
-        ))
+        docs.append(
+            Document(
+                page_content=_review_to_text(r),
+                metadata={
+                    "type": "review",
+                    "reviewId": r["reviewId"],
+                    "productId": r["productId"],
+                },
+            )
+        )
     if policy_text.strip():
         docs.append(Document(page_content=policy_text, metadata={"type": "policy"}))
     return docs
@@ -56,13 +76,19 @@ def build_documents(products, reviews, policy_text) -> List[Document]:
 
 def build_vector_index() -> None:
     """构建 Chroma 向量库并写回 ctx.vectorstore / ctx.chunks"""
-    ctx = get_context()
+    ctx = get_context()  # 从 RuntimeContext 获取当前上下文
     config = ctx.config
     products, orders, reviews, policy_text = load_raw_data(config.data_dir)
-    ctx.products, ctx.orders, ctx.reviews, ctx.policy_text = products, orders, reviews, policy_text
+    ctx.products, ctx.orders, ctx.reviews, ctx.policy_text = (
+        products,
+        orders,
+        reviews,
+        policy_text,
+    )
 
     docs = build_documents(products, reviews, policy_text)
 
+    # 分块文本
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=config.chunk_size,
         chunk_overlap=config.chunk_overlap,
@@ -71,10 +97,32 @@ def build_vector_index() -> None:
     chunks = splitter.split_documents(docs)
     ctx.chunks = chunks
 
-    ctx.vectorstore = Chroma.from_documents(
-        documents=chunks,
-        embedding=ctx.embeddings,
+    # 复用已有 collection：Chroma.from_documents 会不断追加新 ID，
+    # 每次启动都重建会造成重复文档，也会拖慢 API 启动。
+    ctx.vectorstore = Chroma(
         collection_name=config.chroma_collection,
+        embedding_function=ctx.embeddings,
         persist_directory=config.chroma_persist_dir,
     )
-    print(f"[build_index] 已构建向量库，文档 {len(docs)} 篇 → 分块 {len(chunks)} 个")
+    try:
+        existing = ctx.vectorstore._collection.count()
+    except Exception:
+        existing = 0
+
+    if existing == 0:
+        ctx.vectorstore.add_documents(chunks)
+        print(
+            f"[build_index] 已构建向量库，文档 {len(docs)} 篇 → 分块 {len(chunks)} 个"
+        )
+    elif existing == len(chunks):
+        print(f"[build_index] 复用已有向量索引（{existing} 个分块）")
+    else:
+        # 数据或分块参数变了：重建知识库 collection
+        ctx.vectorstore.delete_collection()
+        ctx.vectorstore = Chroma.from_documents(
+            documents=chunks,
+            embedding=ctx.embeddings,
+            collection_name=config.chroma_collection,
+            persist_directory=config.chroma_persist_dir,
+        )
+        print(f"[build_index] 索引数量不一致（{existing} → {len(chunks)}），已重建")

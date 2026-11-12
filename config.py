@@ -41,5 +41,21 @@ class Config:
     rrf_k: int = 60
     max_iterations: int = 3  # AgenticRAG / SelfRAG 反思最大轮次
 
+    # ---- 三层记忆（Redis + Chroma）----
+    memory_enabled: bool = True
+    redis_url: str = "redis://localhost:6379/0"
+    session_ttl_seconds: int = 1800          # 短期会话 30 分钟无活动自动过期
+    short_term_max_turns: int = 10           # 短期记忆最多保留最近 10 轮
+    long_term_top_k: int = 3                 # 长期语义记忆召回条数
+    long_term_history_max: int = 200         # 长期历史最多保留 200 条
+    long_term_collection: str = "user_memory"  # Chroma 中的长期记忆 collection
+    profile_update_enabled: bool = True      # 是否每轮用 LLM 增量更新用户画像
+
+    # ---- HTTP API / 认证 ----
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+    jwt_secret: str = "dev-only-change-me"   # 生产环境必须通过 JWT_SECRET 覆盖
+    jwt_expire_minutes: int = 120
+
 
 DEFAULT_CONFIG = Config()

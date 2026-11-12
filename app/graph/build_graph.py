@@ -2,6 +2,9 @@
 知识图谱构建：连接 Neo4j，导入商品 / 用户 / 订单 / 评价，
 并推导 CO_BOUGHT_WITH（协同购买）与 SUBSTITUTE_OF（替代品）边。
 """
+
+# 把JSON数据导入Neo4j，构建知识图谱
+
 from neo4j import GraphDatabase
 
 from app.graph import schema
@@ -40,9 +43,14 @@ def _load_products(driver, products):
                 MERGE (p)-[:MADE_BY]->(b)
                 MERGE (p)-[:BELONGS_TO]->(c)
                 """,
-                productId=p["productId"], name=p["name"], price=p["price"],
-                rating=p["rating"], sales=p["sales"], stock=p["stock"],
-                brand=p["brand"], category=p["category"],
+                productId=p["productId"],
+                name=p["name"],
+                price=p["price"],
+                rating=p["rating"],
+                sales=p["sales"],
+                stock=p["stock"],
+                brand=p["brand"],
+                category=p["category"],
             )
             for key, value in p.get("attrs", {}).items():
                 session.run(
@@ -52,7 +60,9 @@ def _load_products(driver, products):
                     SET a.value = $value
                     MERGE (p)-[:HAS_ATTRIBUTE]->(a)
                     """,
-                    productId=p["productId"], key=key, value=str(value),
+                    productId=p["productId"],
+                    key=key,
+                    value=str(value),
                 )
 
 
@@ -68,9 +78,13 @@ def _load_orders(driver, orders):
                     o.trackingNo = $trackingNo, o.userId = $userId
                 MERGE (u)-[:PLACED]->(o)
                 """,
-                userId=o["userId"], orderId=o["orderId"], orderDate=o["orderDate"],
-                status=o["status"], totalAmount=o["totalAmount"],
-                courier=o.get("courier", ""), trackingNo=o.get("trackingNo", ""),
+                userId=o["userId"],
+                orderId=o["orderId"],
+                orderDate=o["orderDate"],
+                status=o["status"],
+                totalAmount=o["totalAmount"],
+                courier=o.get("courier", ""),
+                trackingNo=o.get("trackingNo", ""),
             )
             for item in o.get("items", []):
                 session.run(
@@ -79,7 +93,8 @@ def _load_orders(driver, orders):
                     MATCH (p:Product {productId: $productId})
                     MERGE (o)-[:CONTAINS]->(p)
                     """,
-                    orderId=o["orderId"], productId=item["productId"],
+                    orderId=o["orderId"],
+                    productId=item["productId"],
                 )
 
 
@@ -96,29 +111,28 @@ def _load_reviews(driver, reviews):
                 MATCH (p:Product {productId: $productId})
                 MERGE (p)-[:HAS_REVIEW]->(r)
                 """,
-                userId=r["userId"], reviewId=r["reviewId"], rating=r["rating"],
-                content=r["content"], productId=r["productId"],
+                userId=r["userId"],
+                reviewId=r["reviewId"],
+                rating=r["rating"],
+                content=r["content"],
+                productId=r["productId"],
             )
 
 
 def _derive_relations(driver):
     """由订单共现推导协同购买，由同类目同价位推导替代品。"""
     with driver.session() as session:
-        session.run(
-            """
+        session.run("""
             MATCH (o:Order)-[:CONTAINS]->(p1:Product), (o)-[:CONTAINS]->(p2:Product)
             WHERE p1.productId < p2.productId
             MERGE (p1)-[:CO_BOUGHT_WITH]->(p2)
-            """
-        )
-        session.run(
-            """
+            """)
+        session.run("""
             MATCH (p1:Product)-[:BELONGS_TO]->(c:Category)<-[:BELONGS_TO]-(p2:Product)
             WHERE p1.productId < p2.productId
               AND abs(p1.price - p2.price) / toFloat(p1.price) < 0.25
             MERGE (p1)-[:SUBSTITUTE_OF]->(p2)
-            """
-        )
+            """)
 
 
 def build_graph(ctx) -> object:

@@ -19,6 +19,9 @@ chromadb==1.5.9
 # 图数据库
 neo4j==6.4.1
 
+# 记忆（短期会话 / 长期历史 / 用户画像）
+redis==8.1.0
+
 # 嵌入 / 检索
 sentence-transformers==5.7.0
 transformers==4.57.6
@@ -29,6 +32,12 @@ numpy==2.2.6
 onnxruntime==1.31.0
 rank-bm25==0.2.2
 jieba==0.42.1
+
+# HTTP API / 认证
+fastapi==0.162.0
+starlette==1.10.0
+uvicorn==0.54.0
+PyJWT==2.15.1
 
 # 工具
 python-dotenv==1.2.4

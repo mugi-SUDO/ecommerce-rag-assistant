@@ -1,66 +1,31 @@
 """
-电商服务平台智能助手入口
+支持CLI和HTTP API两种模式
+
+这里是CLI模式的电商服务平台智能助手入口
+本地单用户模式，user_id从环境变量里加载
 
 运行：
     python main.py
 
 流程：
     加载配置 -> 构建 LLM/嵌入模型 -> 加载数据 -> 构建向量索引(Chroma)
-    -> 构建知识图谱(Neo4j) -> 编译 LangGraph 状态机 -> 交互问答
+    -> 构建三层记忆(Redis + Chroma) -> 构建知识图谱(Neo4j)
+    -> 编译 LangGraph 状态机 -> 交互问答 -> 会话结束归档记忆
+
+多用户 HTTP 服务请用：
+    python api_server.py
 """
 
 import os
 import sys
+import uuid
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-# 让 config / app 可被导入
+# 把当前文件所在目录插入到模块搜索路径 sys.path 的最前面
+# 从而让 Python 能优先从该目录导入模块。
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from config import DEFAULT_CONFIG
-from app.runtime import RuntimeContext, set_context, build_llm, build_embeddings
-
-
-def load_env():
-    """加载环境依次尝试：项目本地 .env -> code/.env -> 仓库根 .env（回退不覆盖已有值）"""
-
-    root = Path(__file__).resolve().parent
-    load_dotenv(root / ".env")
-    if os.getenv("DEEPSEEK_API_KEY"):
-        return
-    load_dotenv(root.parent / ".env", override=False)
-    if os.getenv("DEEPSEEK_API_KEY"):
-        return
-    load_dotenv(root.parent.parent / ".env", override=False)
-
-
-def initialize_system():
-    load_env()
-    ctx = RuntimeContext(config=DEFAULT_CONFIG)
-    set_context(ctx)
-
-    print(">>> 初始化 LLM（DeepSeek）...")
-    ctx.llm = build_llm(DEFAULT_CONFIG)
-
-    print(">>> 初始化本地嵌入模型（BGE-small-zh，首次会下载模型）...")
-    ctx.embeddings = build_embeddings(DEFAULT_CONFIG)
-
-    print(">>> 加载数据 + 构建向量索引（Chroma）...")
-    from app.vectorstore.build_index import build_vector_index
-
-    build_vector_index()  # 内部会加载 raw 数据并写回 ctx.products/orders/reviews/policy_text
-
-    print(">>> 构建知识图谱（Neo4j，未连接则 GraphRAG 分支降级）...")
-    from app.graph.build_graph import build_graph
-
-    build_graph(ctx)
-
-    print(">>> 编译状态机（LangGraph）...")
-    from app.state_machine.graph import ECommerceAssistant
-
-    assistant = ECommerceAssistant(ctx)
-    return assistant
+from app.bootstrap import initialize_system
 
 
 def run_interactive():
@@ -73,24 +38,40 @@ def run_interactive():
         print(f"\n[初始化失败] {type(e).__name__}: {e}")
         return
 
-    print("\n===== 电商智能助手就绪，输入问题开始，输入 exit/退出 结束 =====\n")
-    while True:
+    session_id = uuid.uuid4().hex[:8]  # 随机生成一个 8 位十六进制的会话 ID
+    user_id = os.getenv(
+        "MEMORY_USER_ID", "U001"
+    )  # 从环境变量获取用户 ID，默认值为 "U001"
+    print(f"\n本次会话 ID：{session_id}    用户 ID：{user_id}")
+    print("===== 电商智能助手就绪，输入问题开始，输入 exit/退出 结束 =====\n")
+    print(
+        "提示：会话结束时短期记忆会归档为摘要并清空；用户画像与长期历史跨会话保留。\n"
+    )
+
+    try:
+        while True:
+            try:
+                query = input("你：").strip()
+            except (EOFError, KeyboardInterrupt):
+                print("\n再见！")
+                break
+            if not query:
+                continue
+            if query.lower() in ("exit", "quit", "q", "退出"):
+                print("再见！")
+                break
+            print("助手思考中...")
+            try:
+                answer = assistant.run(query, session_id=session_id, user_id=user_id)
+            except Exception as e:
+                answer = f"[运行出错] {type(e).__name__}: {e}"
+            print(f"\n助手：{answer}\n")
+    finally:
         try:
-            query = input("你：").strip()
-        except (EOFError, KeyboardInterrupt):
-            print("\n再见！")
-            break
-        if not query:
-            continue
-        if query.lower() in ("exit", "quit", "q", "退出"):
-            print("再见！")
-            break
-        print("助手思考中...")
-        try:
-            answer = assistant.run(query)
+            assistant.end_session(session_id, user_id)
+            print("[memory] 本次会话已归档：摘要写入长期记忆，短期会话已清空。")
         except Exception as e:
-            answer = f"[运行出错] {type(e).__name__}: {e}"
-        print(f"\n助手：{answer}\n")
+            print(f"[memory] 会话归档失败：{type(e).__name__}: {e}")
 
 
 if __name__ == "__main__":
